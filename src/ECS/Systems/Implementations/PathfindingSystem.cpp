@@ -12,6 +12,7 @@
 #include "PathfindingSystem.h"
 
 #include <optional>
+#include <vector>
 
 #include <entt/entity/entity.hpp>
 #include <glm/gtx/euler_angles.hpp>
@@ -70,9 +71,12 @@ void IterateStepAroundObstacle(Transform& transform, WallHug& wallHug, const Fix
 	InitializeStep(transform, wallHug, angle + angleStep * clockwiseModifier);
 }
 
-void InCircleHugWithoutObject()
+void InCircleHugWithoutObject(entt::entity entity)
 {
-	throw std::runtime_error("TODO: Handle case of orbiting without an object to orbit");
+	SPDLOG_LOGGER_ERROR(spdlog::get("pathfinding"),
+	                    "Entity {:d} in circle-hug state without a valid reference object; this case is not yet fully "
+	                    "implemented and the entity will be transitioned to step-through to avoid a crash",
+	                    static_cast<uint32_t>(entity));
 }
 bool AreWeThere(const glm::vec2& pos, const glm::vec2& goal, float threshold)
 {
@@ -198,8 +202,12 @@ bool OrbitScanForObstacle(entt::entity entity, bool clockwise, Transform& transf
 		                         obstacleFixed.boundingRadius * obstacleFixed.boundingRadius;
 		if (closeEnough)
 		{
-			throw std::runtime_error("TODO: CircleSquareSweep");
-			// Needs to return out of this scope and not run the external following code
+			// CircleSquareSweep not yet implemented: skip this attempt rather than crashing.
+			// The entity will continue orbiting with its current step; it may become slightly
+			// misaligned but will not halt progression.
+			SPDLOG_LOGGER_WARN(spdlog::get("pathfinding"),
+			                   "Goal is inside obstacle bounding circle (CircleSquareSweep not implemented), skipping");
+			continue;
 		}
 
 		for (const auto& c : GetNeighboringCells(glm::xz(transform.position)))
@@ -403,35 +411,45 @@ void PathfindingSystem::Update()
 	    entt::exclude<WallHugObjectReference>);
 
 	// 3.  ORBIT_CW, ORBIT_CCW, EXIT_CIRCLE_CW, EXIT_CIRCLE_CCW:
-	//         If there is no recorded obstacle (what we orbit), this is an unimplemented error
-	//         exclude from next parts
-	registry.Each<const MoveStateOrbitTag>([&registry](entt::entity entity, [[maybe_unused]] const MoveStateOrbitTag& state) {
-		if (!registry.AllOf<WallHugObjectReference>(entity))
+	//         If there is no recorded obstacle (what we orbit), transition to step-through to avoid crashing.
+	//         Collect bad entities first so we do not modify the registry while iterating.
+	{
+		std::vector<std::pair<entt::entity, MoveStateOrbitTag>> orphanedOrbitEntities;
+		registry.Each<const MoveStateOrbitTag>(
+		    [&registry, &orphanedOrbitEntities](entt::entity entity, const MoveStateOrbitTag& state) {
+			    const bool missingRef = !registry.AllOf<WallHugObjectReference>(entity);
+			    const bool nullRef = !missingRef && registry.Get<const WallHugObjectReference>(entity).entity == entt::null;
+			    if (missingRef || nullRef)
+			    {
+				    InCircleHugWithoutObject(entity);
+				    orphanedOrbitEntities.emplace_back(entity, state);
+			    }
+		    });
+		for (auto& [entity, state] : orphanedOrbitEntities)
 		{
-			InCircleHugWithoutObject();
+			registry.Remove<MoveStateOrbitTag>(entity);
+			registry.Remove<WallHugObjectReference>(entity);
+			registry.AssignOrReplace<MoveStateStepThroughTag>(entity, MoveStateClockwise::Undefined, state.stepGoal);
 		}
-	});
-	registry.Each<const MoveStateOrbitTag, const WallHugObjectReference>(
-	    []([[maybe_unused]] const MoveStateOrbitTag& state, const WallHugObjectReference& object) {
-		    if (object.entity == entt::null)
-		    {
-			    InCircleHugWithoutObject();
-		    }
-	    });
-	registry.Each<const MoveStateExitCircleTag>(
-	    [&registry](entt::entity entity, [[maybe_unused]] const MoveStateExitCircleTag& state) {
-		    if (!registry.AllOf<WallHugObjectReference>(entity))
-		    {
-			    InCircleHugWithoutObject();
-		    }
-	    });
-	registry.Each<const MoveStateExitCircleTag, const WallHugObjectReference>(
-	    []([[maybe_unused]] const MoveStateExitCircleTag& state, const WallHugObjectReference& object) {
-		    if (object.entity == entt::null)
-		    {
-			    InCircleHugWithoutObject();
-		    }
-	    });
+
+		std::vector<std::pair<entt::entity, MoveStateExitCircleTag>> orphanedExitCircleEntities;
+		registry.Each<const MoveStateExitCircleTag>(
+		    [&registry, &orphanedExitCircleEntities](entt::entity entity, const MoveStateExitCircleTag& state) {
+			    const bool missingRef = !registry.AllOf<WallHugObjectReference>(entity);
+			    const bool nullRef = !missingRef && registry.Get<const WallHugObjectReference>(entity).entity == entt::null;
+			    if (missingRef || nullRef)
+			    {
+				    InCircleHugWithoutObject(entity);
+				    orphanedExitCircleEntities.emplace_back(entity, state);
+			    }
+		    });
+		for (auto& [entity, state] : orphanedExitCircleEntities)
+		{
+			registry.Remove<MoveStateExitCircleTag>(entity);
+			registry.Remove<WallHugObjectReference>(entity);
+			registry.AssignOrReplace<MoveStateStepThroughTag>(entity, MoveStateClockwise::Undefined, state.stepGoal);
+		}
+	}
 
 	// 4a. STEP_THROUGH, EXIT_CIRCLE_CW, EXIT_CIRCLE_CCW, LINEAR without obstacles:
 	//         Do StepForward and ApplyStepGoal for the step distance -> no change to state
@@ -474,12 +492,46 @@ void PathfindingSystem::Update()
 	    });
 	// Call OrbitScanForObstacle for those without reference, jumping from one circle to the next
 	// registry.Each<const MoveStateOrbitTag, entt::exclude_t<WallHugObjectReference>>( // FIXME: Exclusion list is not working
-	registry.Each<const MoveStateOrbitTag>([&registry](entt::entity entity, [[maybe_unused]] const MoveStateOrbitTag& state) {
-		if (!registry.AnyOf<WallHugObjectReference>(entity))
+	{
+		std::vector<std::pair<entt::entity, MoveStateOrbitTag>> orbitEntitiesWithoutReference;
+		registry.Each<const MoveStateOrbitTag>(
+		    [&registry, &orbitEntitiesWithoutReference](entt::entity entity, const MoveStateOrbitTag& state) {
+			    if (!registry.AnyOf<WallHugObjectReference>(entity))
+			    {
+				    orbitEntitiesWithoutReference.emplace_back(entity, state);
+			    }
+		    });
+		for (auto& [entity, state] : orbitEntitiesWithoutReference)
 		{
-			throw std::runtime_error("TODO: probably transitioning to another circle, scan and select new reference");
+			// The entity has lost its circle reference while orbiting (e.g. transitioning between
+			// adjacent obstacles). Attempt to find a new reference via a linear scan; if none is
+			// found fall back to step-through so the entity continues moving rather than stalling.
+			auto* wallHug = registry.TryGet<WallHug>(entity);
+			auto* transform = registry.TryGet<Transform>(entity);
+			bool recovered = false;
+			if (wallHug != nullptr && transform != nullptr)
+			{
+				InitializeStepToGoal(*transform, *wallHug);
+				recovered = LinearScanForObstacle(entity, glm::xz(transform->position), wallHug->step);
+			}
+			if (!recovered)
+			{
+				SPDLOG_LOGGER_WARN(spdlog::get("pathfinding"),
+				                   "Orbit entity {:d} lost reference and could not find a new one; transitioning to "
+				                   "step-through",
+				                   static_cast<uint32_t>(entity));
+				registry.Remove<MoveStateOrbitTag>(entity);
+				registry.AssignOrReplace<MoveStateStepThroughTag>(entity, MoveStateClockwise::Undefined, state.stepGoal);
+			}
+			else
+			{
+				// Found a new obstacle – switch back to linear approach so the orbit can
+				// restart cleanly once we reach the new obstacle.
+				registry.Remove<MoveStateOrbitTag>(entity);
+				registry.AssignOrReplace<MoveStateLinearTag>(entity, state.clockwise, state.stepGoal);
+			}
 		}
-	});
+	}
 	ApplyStepGoal<MoveState::Orbit>(registry);
 	// Check if it's time to exit circle hug
 	registry.Each<const MoveStateOrbitTag, WallHug, Transform, WallHugObjectReference>(
