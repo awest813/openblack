@@ -253,8 +253,10 @@ bool Game::GameLogicLoop() noexcept
 		return false;
 	}
 
-	// Build Map Grid Acceleration Structure
-	Locator::entitiesMap::value().Rebuild();
+	// Rebuild only the mobile portion of the spatial grid each tick.
+	// Fixed entities don't move, so the fixed grid is preserved from the last
+	// full Rebuild() (called once when the scene is loaded).
+	Locator::entitiesMap::value().RebuildMobile();
 
 	auto& profiler = Locator::profiler::value();
 

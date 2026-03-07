@@ -24,23 +24,23 @@
 using namespace openblack::ecs;
 using namespace openblack::ecs::components;
 
-const std::unordered_set<entt::entity>& MapProduction::GetFixedInGridCell(const CellId& cellId) const
+const std::vector<entt::entity>& MapProduction::GetFixedInGridCell(const CellId& cellId) const
 {
 	return _fixedGrid.at(cellId.x + cellId.y * k_GridSize.x);
 }
 
-const std::unordered_set<entt::entity>& MapProduction::GetFixedInGridCell(const glm::vec3& pos) const
+const std::vector<entt::entity>& MapProduction::GetFixedInGridCell(const glm::vec3& pos) const
 {
 	const auto cellId = GetGridCell(pos);
 	return GetFixedInGridCell(cellId);
 }
 
-const std::unordered_set<entt::entity>& MapProduction::GetMobileInGridCell(const CellId& cellId) const
+const std::vector<entt::entity>& MapProduction::GetMobileInGridCell(const CellId& cellId) const
 {
 	return _mobileGrid.at(cellId.x + cellId.y * k_GridSize.x);
 }
 
-const std::unordered_set<entt::entity>& MapProduction::GetMobileInGridCell(const glm::vec3& pos) const
+const std::vector<entt::entity>& MapProduction::GetMobileInGridCell(const glm::vec3& pos) const
 {
 	const auto cellId = GetGridCell(pos);
 	return GetMobileInGridCell(cellId);
@@ -52,16 +52,30 @@ void MapProduction::Rebuild()
 	Build();
 }
 
+void MapProduction::RebuildMobile()
+{
+	ClearMobile();
+	BuildMobile();
+}
+
 void MapProduction::Clear()
 {
 	for (auto& g : _fixedGrid)
 	{
 		g.clear();
 	}
-	for (auto& g : _mobileGrid)
+	ClearMobile();
+}
+
+void MapProduction::ClearMobile()
+{
+	// Only clear cells that were populated last tick to avoid iterating all
+	// 512×512 = 262 144 cells when most of them are empty.
+	for (const uint32_t cellIdx : _dirtyMobileCells)
 	{
-		g.clear();
+		_mobileGrid[cellIdx].clear();
 	}
+	_dirtyMobileCells.clear();
 }
 
 void MapProduction::Build()
@@ -81,15 +95,27 @@ void MapProduction::Build()
 				if (glm::distance2(GetCellCenter(cellId), fixed.boundingCenter) < radius * radius)
 				{
 					auto& cell = _fixedGrid.at(cellId.x + cellId.y * k_GridSize.x);
-					cell.insert(entity);
+					cell.push_back(entity);
 				}
 			}
 		}
 	});
+	BuildMobile();
+}
+
+void MapProduction::BuildMobile()
+{
+	auto& registry = Locator::entitiesRegistry::value();
 	registry.Each<const Mobile, const Transform>(
 	    [this](entt::entity entity, [[maybe_unused]] const Mobile& mobile, const Transform& transform) {
 		    const auto cellId = GetGridCell(transform.position);
-		    auto& cell = _mobileGrid.at(cellId.x + cellId.y * k_GridSize.x);
-		    cell.insert(entity);
+		    const uint32_t cellIdx = cellId.x + cellId.y * k_GridSize.x;
+		    auto& cell = _mobileGrid[cellIdx];
+		    // Track this cell as dirty so ClearMobile() can skip empty cells.
+		    if (cell.empty())
+		    {
+			    _dirtyMobileCells.push_back(cellIdx);
+		    }
+		    cell.push_back(entity);
 	    });
 }
