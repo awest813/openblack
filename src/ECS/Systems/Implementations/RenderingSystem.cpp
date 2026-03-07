@@ -35,12 +35,12 @@ void RenderingSystem::PrepareDrawDescs(bool drawBoundingBox)
 {
 	auto& registry = Locator::entitiesRegistry::value();
 
-	// Count number of instances
+	// Count number of instances – reuse scratch map to avoid per-frame heap allocations.
 	uint32_t instanceCount = 0;
-	std::unordered_map<entt::id_type, std::pair<uint32_t, bool>> meshIds;
+	_scratchMeshIds.clear();
 
-	auto prep = [&meshIds, &instanceCount](const Mesh& mesh, bool morphWithTerrain) {
-		auto count = meshIds.insert(std::make_pair(mesh.id, std::make_pair(mesh.submeshId, morphWithTerrain)));
+	auto prep = [this, &instanceCount](const Mesh& mesh, bool morphWithTerrain) {
+		auto count = _scratchMeshIds.insert(std::make_pair(mesh.id, std::make_pair(mesh.submeshId, morphWithTerrain)));
 		count.first->second.first++;
 		instanceCount++;
 	};
@@ -76,7 +76,7 @@ void RenderingSystem::PrepareDrawDescs(bool drawBoundingBox)
 	// Determine uniform buffer offsets and instance count for draw
 	uint32_t offset = 0;
 	_renderContext.instancedDrawDescs.clear();
-	for (const auto& [meshId, desc] : meshIds)
+	for (const auto& [meshId, desc] : _scratchMeshIds)
 	{
 		_renderContext.instancedDrawDescs.emplace(std::piecewise_construct, std::forward_as_tuple(meshId),
 		                                          std::forward_as_tuple(offset, desc.first, desc.second));
@@ -88,13 +88,13 @@ void RenderingSystem::PrepareDrawUploadUniforms(bool drawBoundingBox)
 {
 	auto& registry = Locator::entitiesRegistry::value();
 
-	// Store offsets of uniforms for descs
-	std::map<entt::id_type, uint32_t> uniformOffsets;
+	// Reuse scratch map to avoid per-frame heap allocations.
+	_scratchUniformOffsets.clear();
 
 	// Set transforms for instanced draw at offsets
 	registry.Each<const Mesh, const Transform>(
-	    [this, &uniformOffsets, drawBoundingBox](const Mesh& mesh, const Transform& transform) {
-		    auto offset = uniformOffsets.insert(std::make_pair(mesh.id, 0));
+	    [this, drawBoundingBox](const Mesh& mesh, const Transform& transform) {
+		    auto offset = _scratchUniformOffsets.insert(std::make_pair(mesh.id, 0));
 		    auto desc = _renderContext.instancedDrawDescs.find(mesh.id);
 
 		    auto modelMatrix = glm::mat4(transform.rotation);

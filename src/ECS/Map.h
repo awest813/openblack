@@ -12,7 +12,7 @@
 #include <cstdint>
 
 #include <array>
-#include <unordered_set>
+#include <vector>
 
 #include <entt/fwd.hpp>
 #include <glm/fwd.hpp>
@@ -33,16 +33,21 @@ public:
 	static CellId GetGridCell(const glm::vec3& pos);
 	static glm::vec2 GetCellCenter(const CellId& cellId);
 
-	[[nodiscard]] virtual const std::unordered_set<entt::entity>& GetFixedInGridCell(const CellId& cellId) const = 0;
-	[[nodiscard]] virtual const std::unordered_set<entt::entity>& GetFixedInGridCell(const glm::vec3& pos) const = 0;
-	[[nodiscard]] virtual const std::unordered_set<entt::entity>& GetMobileInGridCell(const CellId& cellId) const = 0;
-	[[nodiscard]] virtual const std::unordered_set<entt::entity>& GetMobileInGridCell(const glm::vec3& pos) const = 0;
+	[[nodiscard]] virtual const std::vector<entt::entity>& GetFixedInGridCell(const CellId& cellId) const = 0;
+	[[nodiscard]] virtual const std::vector<entt::entity>& GetFixedInGridCell(const glm::vec3& pos) const = 0;
+	[[nodiscard]] virtual const std::vector<entt::entity>& GetMobileInGridCell(const CellId& cellId) const = 0;
+	[[nodiscard]] virtual const std::vector<entt::entity>& GetMobileInGridCell(const glm::vec3& pos) const = 0;
 
+	/// Rebuild both the fixed and mobile grids (call on scene load or when entities are added/removed).
 	virtual void Rebuild() = 0;
+	/// Rebuild only the mobile grid (call every game-logic tick – much cheaper than a full rebuild).
+	virtual void RebuildMobile() = 0;
 
 private:
 	virtual void Clear() = 0;
+	virtual void ClearMobile() = 0;
 	virtual void Build() = 0;
+	virtual void BuildMobile() = 0;
 };
 
 } // namespace openblack::ecs
