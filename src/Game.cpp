@@ -707,13 +707,14 @@ bool Game::Initialize() noexcept
 		    }
 		    const auto& audioHeaders = soundPack.GetAudioSampleHeaders();
 		    const auto& audioData = soundPack.GetAudioSamplesData();
-		    auto soundName = std::filesystem::path(audioHeaders[0].name.data());
 
 		    if (audioHeaders.empty())
 		    {
 			    SPDLOG_LOGGER_WARN(spdlog::get("audio"), "Empty sound pack found for {}. Skipping", f.filename().string());
 			    return;
 		    }
+
+		    auto soundName = std::filesystem::path(audioHeaders[0].name.data());
 
 		    auto groupName = f.filename().string();
 
@@ -734,7 +735,7 @@ bool Game::Initialize() noexcept
 				    {
 					    SPDLOG_LOGGER_WARN(spdlog::get("audio"), "Empty sound buffer found for {}. Skipping",
 					                       soundName.string());
-					    return;
+					    continue;
 				    }
 
 				    const auto stringId = fmt::format("{}/{}", groupName, audioHeaders[i].id);
@@ -931,7 +932,15 @@ bool Game::LoadMap(const std::filesystem::path& path) noexcept
 	                                                        config.cameraFarClip);
 
 	Script script;
-	script.Load(source);
+	try
+	{
+		script.Load(source);
+	}
+	catch (const std::runtime_error& err)
+	{
+		SPDLOG_LOGGER_ERROR(spdlog::get("game"), "Failed to load map script {}: {}", path.generic_string(), err.what());
+		return false;
+	}
 
 	// Each released map comes with an optional .fot file which contains the footpath information for the map
 	const auto stem = string_utils::LowerCase(path.stem().generic_string());
@@ -971,9 +980,6 @@ void Game::LoadLandscape(const std::filesystem::path& path)
 
 	// There is always a player active
 	Locator::playerSystem::value().AddPlayer(ecs::archetypes::PlayerArchetype::Create(PlayerNames::PLAYER_ONE));
-
-	// There is always at least one player active.
-	ecs::archetypes::PlayerArchetype::Create(PlayerNames::PLAYER_ONE);
 
 	Locator::cameraBookmarkSystem::value().Initialize();
 	Locator::dynamicsSystem::value().RegisterIslandRigidBodies(Locator::terrainSystem::value());
