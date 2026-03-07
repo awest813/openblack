@@ -27,7 +27,6 @@ uint32_t VillagerInvalidState(LivingAction& action)
 {
 	SPDLOG_LOGGER_ERROR(spdlog::get("ai"), "Villager #{}: Stuck in an invalid state",
 	                    static_cast<uint32_t>(Locator::entitiesRegistry::value().ToEntity(action)));
-	assert(false);
 	return 0;
 }
 

@@ -105,8 +105,6 @@ Game::Game(Arguments&& args) noexcept
 
 	auto& config = Locator::config::emplace();
 	config.numFramesToSimulate = args.numFramesToSimulate;
-	config.numFramesToSimulate = args.numFramesToSimulate;
-	config.numFramesToSimulate = args.numFramesToSimulate;
 	config.resolution = {args.windowWidth, args.windowHeight};
 	config.displayMode = args.displayMode;
 	config.graphicsBackend = args.graphicsBackend;
