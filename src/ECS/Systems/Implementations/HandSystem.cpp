@@ -30,7 +30,7 @@ bool HandSystem::Initialize() noexcept
 	_hands[static_cast<size_t>(Side::Right)] =
 	    HandArchetype::Create(glm::vec3(0.0f), glm::half_pi<float>(), 0.0f, glm::half_pi<float>(), 0.01f, true);
 
-	return false;
+	return true;
 }
 
 std::array<entt::entity, static_cast<size_t>(HandSystemInterface::Side::_Count)> HandSystem::GetPlayerHands() const noexcept

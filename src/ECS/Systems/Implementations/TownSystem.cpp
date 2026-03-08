@@ -11,6 +11,9 @@
 
 #include "TownSystem.h"
 
+#include <glm/gtx/norm.hpp>
+#include <spdlog/spdlog.h>
+
 #include "ECS/Components/Abode.h"
 #include "ECS/Components/Town.h"
 #include "ECS/Components/Transform.h"
@@ -53,7 +56,7 @@ entt::entity TownSystem::FindClosestTown(const glm::vec3& point) const
 
 	registry.Each<const Town, const Transform>(
 	    [&point, &result, &closest](entt::entity entity, [[maybe_unused]] auto& town, [[maybe_unused]] auto& transform) {
-		    float distance2 = glm::dot(point, transform.position);
+		    float distance2 = glm::distance2(point, transform.position);
 		    if (distance2 < closest)
 		    {
 			    closest = distance2;
@@ -72,8 +75,18 @@ void TownSystem::AddHomelessVillagerToTown(entt::entity townEntity, entt::entity
 	auto& town = registry.Get<Town>(townEntity);
 	auto& villager = registry.Get<Villager>(villagerEntity);
 	// TODO(bwrsandman): if already assigned to abode or other villager homeless list, remove
-	assert(villager.abode == entt::null);
-	assert(villager.town == entt::null || villager.town == registryContext.towns[town.id]);
+	if (villager.abode != entt::null)
+	{
+		SPDLOG_LOGGER_WARN(spdlog::get("game"),
+		                   "AddHomelessVillagerToTown: villager already has an abode assigned; skipping");
+		return;
+	}
+	if (villager.town != entt::null && villager.town != registryContext.towns[town.id])
+	{
+		SPDLOG_LOGGER_WARN(spdlog::get("game"),
+		                   "AddHomelessVillagerToTown: villager is already assigned to a different town; skipping");
+		return;
+	}
 	town.homelessVillagers.insert(villagerEntity);
 	villager.town = townEntity;
 }

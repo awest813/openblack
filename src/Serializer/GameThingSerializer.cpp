@@ -9,8 +9,6 @@
 
 #include "GameThingSerializer.h"
 
-#include <cassert>
-
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
@@ -55,7 +53,7 @@ void GameThingSerializer::ReadChecksum()
 	{
 		SPDLOG_LOGGER_ERROR(spdlog::get("game"), "Failed checksum (expected={:08X}, read={:08X}) at {:08X}", expectedSum,
 		                    readSum, _stream.Position());
-		assert(false);
+		// Do not abort: log the mismatch and continue so that the rest of the file can still be parsed.
 	}
 }
 
@@ -102,7 +100,9 @@ std::shared_ptr<GameThingSerializer::GameThing> GameThingSerializer::Deserialize
 			thing = std::make_unique<FootpathLinkSave>();
 			break;
 		default:
-			assert(false);
+			SPDLOG_LOGGER_ERROR(spdlog::get("game"), "Unknown GameThingType {} at {:08X}, skipping entry",
+			                    static_cast<uint32_t>(type), _stream.Position());
+			return nullptr;
 		}
 
 		_cache.push_back(thing);
@@ -118,7 +118,8 @@ std::shared_ptr<GameThingSerializer::GameThing> GameThingSerializer::Deserialize
 	}
 	if (index > _cache.size())
 	{
-		assert(false); // weird case
+		SPDLOG_LOGGER_ERROR(spdlog::get("game"), "GameThing index {} out of range (cache size {}), skipping entry", index,
+		                    _cache.size());
 		return nullptr;
 	}
 	// referring to a previously seen entry
@@ -212,8 +213,13 @@ bool GameThingSerializer::FootpathLinkSave::Deserialize(GameThingSerializer& des
 	auto thing = deserializer.DeserializeOne(GameThingType::FootpathLink);
 	if (thing)
 	{
-		assert(dynamic_cast<FootpathLink*>(thing.get()));
-		link = *dynamic_cast<FootpathLink*>(thing.get());
+		auto* linkPtr = dynamic_cast<FootpathLink*>(thing.get());
+		if (!linkPtr)
+		{
+			SPDLOG_LOGGER_ERROR(spdlog::get("game"), "FootpathLinkSave: deserialized object is not a FootpathLink");
+			return false;
+		}
+		link = *linkPtr;
 		return true;
 	}
 	return false;
