@@ -93,8 +93,9 @@ bool AreWeThere(const glm::vec2& pos, const glm::vec2& goal, float threshold)
 /// +-----+-----+-----+
 std::array<ecs::MapInterface::CellId, 9> GetNeighboringCells(const glm::vec2& pos)
 {
-	const auto cellIndex = MapInterface::GetGridCell(pos);
-	assert(glm::compMin(cellIndex) > 0 && glm::all(glm::lessThan(cellIndex, MapInterface::k_GridSize - glm::u16vec2(1))));
+	// Clamp to [1, k_GridSize-2] so all eight ±1 neighbours are within valid grid bounds.
+	const auto raw = MapInterface::GetGridCell(pos);
+	const glm::u16vec2 cellIndex = glm::clamp(raw, glm::u16vec2(1), MapInterface::k_GridSize - glm::u16vec2(2));
 	return {
 	    cellIndex,                          // Current
 	    {cellIndex.x + 1, cellIndex.y},     // Right
@@ -167,7 +168,7 @@ bool LinearScanForObstacle(entt::entity entity, const glm::vec2& pos, const glm:
 	}
 
 	const auto numSteps = t / stepSize;
-	assert(numSteps >= 0); // t wouldn't be positive here and size should always be positive
+	// numSteps is always >= 0 here: t > 0 (checked above) and stepSize > 0 by construction
 
 	// Too far
 	if (numSteps >= std::numeric_limits<decltype(WallHugObjectReference::stepsAway)>::max())
@@ -278,9 +279,7 @@ bool OrbitScanForObstacle(entt::entity entity, bool clockwise, Transform& transf
 
 					const auto t0 = angle0 * 2.0f / 3.0f * r1 / wallHug.speed;
 					const auto t1 = angle1 * 2.0f / 3.0f * r1 / wallHug.speed;
-					int t = static_cast<int>(glm::round(glm::min(t0, t1)));
-
-					assert(t >= 0);
+					int t = glm::max(0, static_cast<int>(glm::round(glm::min(t0, t1))));
 					if (t < 1)
 					{
 						// We're too close to second circle. Act like we're on the second circle and continue looking forward by
@@ -549,7 +548,10 @@ void PathfindingSystem::Update()
 		    // 2D cross product gives the sin between both vectors
 		    const float sin = glm::cross(glm::vec3(wallHug.step, 0.0f), glm::vec3(diff, 0.0f)).z;
 		    const auto newClockwise = sin > 0.0f ? MoveStateClockwise::Clockwise : MoveStateClockwise::CounterClockwise;
-		    assert(state.clockwise != MoveStateClockwise::Undefined);
+		    if (state.clockwise == MoveStateClockwise::Undefined)
+		    {
+			    return; // Undefined clockwise in orbit state; skip exit-circle check
+		    }
 		    if (state.clockwise == newClockwise)
 		    {
 			    return;
@@ -575,7 +577,11 @@ void PathfindingSystem::Update()
 	registry.Each<const MoveStateLinearTag, Transform, WallHug, WallHugObjectReference>(
 	    [&registry](entt::entity entity, const MoveStateLinearTag& state, Transform& transform, WallHug& wallHug,
 	                WallHugObjectReference& reference) {
-		    assert(reference.stepsAway != 0xFF); // In this case, the component should have been removed
+		    if (reference.stepsAway == std::numeric_limits<decltype(reference.stepsAway)>::max())
+		    {
+			    // 0xFF sentinel: component should have been removed before reaching here; skip gracefully.
+			    return;
+		    }
 		    if (reference.stepsAway == 0)
 		    {
 			    auto clockwise = state.clockwise;

@@ -432,15 +432,22 @@ void LivingActionSystem::VillagerSetState(LivingAction& action, LivingAction::In
 			action.turnsSinceStateChange = 0;
 			if (skipTransition)
 			{
+				action.states[static_cast<size_t>(index)] = static_cast<uint8_t>(state);
 				return;
 			}
 
 			if (VillagerCallExitState(action, index))
 			{
+				// Exit callback returned true: transition is blocked; leave state unchanged.
 				return;
 			}
 
+			action.states[static_cast<size_t>(index)] = static_cast<uint8_t>(state);
 			VillagerCallEntryState(action, index, previousState, state);
+		}
+		else
+		{
+			action.states[static_cast<size_t>(index)] = static_cast<uint8_t>(state);
 		}
 	}
 }

@@ -258,6 +258,12 @@ void AudioManager::PlayMusic(const std::string& packPath, PlayType type)
 		soundPack.Open(packPath);
 		const auto& audioHeaders = soundPack.GetAudioSampleHeaders();
 		const auto& audioData = soundPack.GetAudioSamplesData();
+		if (audioHeaders.empty())
+		{
+			SPDLOG_LOGGER_ERROR(spdlog::get("audio"), "PlayMusic: sound pack '{}' contains no audio samples, skipping",
+			                    packPath);
+			return;
+		}
 		Locator::resources::value().GetSounds().Load(id, resources::SoundLoader::FromBufferTag {}, audioHeaders[0], audioData);
 	}
 	auto sound = Locator::resources::value().GetSounds().Handle(id);

@@ -63,13 +63,23 @@ void FotFile::Load(const std::filesystem::path& path)
 	for (const auto& save : footpathLinkSaves)
 	{
 		std::vector<ecs::components::Footpath::Id> linkFootpathEntities;
+		bool linkValid = true;
 		for (const auto& footpath : save.link.footpaths)
 		{
 			// Save links have duplicates to entries in footpaths
 			const auto footpathListItr = std::find(footpaths.cbegin(), footpaths.cend(), footpath);
-			assert(footpathListItr != footpaths.cend());
+			if (footpathListItr == footpaths.cend())
+			{
+				SPDLOG_LOGGER_ERROR(spdlog::get("game"), "FotFile: footpath link save references unknown footpath, skipping link");
+				linkValid = false;
+				break;
+			}
 			const auto footpathIndex = std::distance(footpaths.cbegin(), footpathListItr);
 			linkFootpathEntities.push_back(footpathEntities[footpathIndex]);
+		}
+		if (!linkValid)
+		{
+			continue;
 		}
 		glm::vec3 position = glm::vec3 {
 		    10.0f * save.coords.x / static_cast<float>(0xFFFF),
