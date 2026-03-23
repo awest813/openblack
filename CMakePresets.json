@@ -104,11 +104,33 @@
       "inherits": "template-vcpkg"
     },
     {
+      "name": "linux-x64-vcpkg",
+      "displayName": "Linux x64 (vcpkg)",
+      "description": "Recommended Linux 64-bit desktop preset using vcpkg and Ninja Multi-Config",
+      "inherits": "ninja-multi-vcpkg",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
       "name": "msvc-17-vcpkg",
       "displayName": "Visual Studio 2022 (vcpkg)",
       "description": "Configure with vcpkg toolchain and generate Visual Studio 2022 project files for all configurations",
       "generator": "Visual Studio 17 2022",
       "inherits": "template-vcpkg"
+    },
+    {
+      "name": "windows-11-vcpkg",
+      "displayName": "Windows 11 / Visual Studio 2022 (vcpkg)",
+      "description": "Recommended Windows desktop preset using the Visual Studio 2022 generator with vcpkg",
+      "inherits": "msvc-17-vcpkg",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     },
     {
       "name": "xcode-vcpkg",
@@ -205,11 +227,35 @@
       "configuration": "Debug"
     },
     {
+      "name": "linux-x64-vcpkg-debug",
+      "configurePreset": "linux-x64-vcpkg",
+      "displayName": "Build linux-x64-vcpkg-debug",
+      "description": "Build Linux x64 (vcpkg) Debug configuration",
+      "configuration": "Debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
       "name": "ninja-multi-vcpkg-release",
       "configurePreset": "ninja-multi-vcpkg",
       "displayName": "Build ninja-multi-vcpkg-release",
       "description": "Build ninja-multi-vcpkg Release configuration",
       "configuration": "Release"
+    },
+    {
+      "name": "linux-x64-vcpkg-release",
+      "configurePreset": "linux-x64-vcpkg",
+      "displayName": "Build linux-x64-vcpkg-release",
+      "description": "Build Linux x64 (vcpkg) Release configuration",
+      "configuration": "Release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
     },
     {
       "name": "msvc-17-vcpkg-debug",
@@ -390,10 +436,36 @@
       "execution": {"noTestsAction": "error", "stopOnFailure": true}
     },
     {
+      "name": "linux-x64-vcpkg-debug",
+      "configurePreset": "linux-x64-vcpkg",
+      "configuration": "Debug",
+      "displayName": "Run CTest tests on Linux x64 vcpkg Debug Build",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "output": {"outputOnFailure": true},
+      "execution": {"noTestsAction": "error", "stopOnFailure": true}
+    },
+    {
       "name": "ninja-multi-vcpkg-release",
       "configurePreset": "ninja-multi-vcpkg",
       "configuration": "Release",
       "displayName": "Run CTest tests on Ninja Configuration for Release Build",
+      "output": {"outputOnFailure": true},
+      "execution": {"noTestsAction": "error", "stopOnFailure": true}
+    },
+    {
+      "name": "linux-x64-vcpkg-release",
+      "configurePreset": "linux-x64-vcpkg",
+      "configuration": "Release",
+      "displayName": "Run CTest tests on Linux x64 vcpkg Release Build",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "output": {"outputOnFailure": true},
       "execution": {"noTestsAction": "error", "stopOnFailure": true}
     }

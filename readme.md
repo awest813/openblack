@@ -29,9 +29,38 @@ For the latest build of openblack without having to build it yourself, we offer 
 
 [![Arch Linux](https://img.shields.io/badge/Package-Arch%20Linux-1793d0)](https://nightly.link/openblack/openblack/workflows/packaging/master/openblack-arch-linux-pkg-master.zip)
 
+## Quick start for Windows 11 and Linux 64-bit
+
+If you just want to run or build openblack on a modern desktop, use the following paths first:
+
+### Windows 11
+
+* Download the latest [Windows (amd64) build](https://nightly.link/openblack/openblack/workflows/ci-vcpkg/master/openblack-windows-latest-master.zip), extract it, and run `Release/openblack.exe`.
+* To build locally in Visual Studio 2022, open the repository folder directly and select the `windows-11-vcpkg` preset.
+* To build from a terminal after installing Visual Studio 2022 with Desktop development for C++, CMake, and Ninja:
+
+  ```sh
+  cmake --preset ninja-multi-vcpkg
+  cmake --build --preset ninja-multi-vcpkg-release --parallel
+  ctest --preset ninja-multi-vcpkg-release
+  ```
+
+### Linux 64-bit
+
+* Download the latest [Linux (amd64) build](https://nightly.link/openblack/openblack/workflows/ci-vcpkg/master/openblack-ubuntu-24.04-master.zip) for raw binaries or the [AppImage](https://nightly.link/openblack/openblack/workflows/packaging/master/openblack-master.AppImage.zip) for the simplest portable package.
+* To build locally with managed dependencies, use the `linux-x64-vcpkg` configure preset and matching build/test presets:
+
+  ```sh
+  cmake --preset linux-x64-vcpkg
+  cmake --build --preset linux-x64-vcpkg-release --parallel
+  ctest --preset linux-x64-vcpkg-release
+  ```
+
+* Linux distributors and packagers can continue to use the existing `linux-system-deps` preset.
+
 ## Experimental
 
-The following are qualified as exprimental. They have base minimum setup such as compilation and rendering system.
+The following are qualified as experimental. They have base minimum setup such as compilation and rendering system.
 Don't expect to be able to launch without some effort and your own patches.
 
 [![Windows (x86) Build](https://img.shields.io/badge/Build-Windows%20(x86)-0078d4)](https://nightly.link/openblack/openblack/workflows/ci-cross-compile/master/openblack-x86-windows-master.zip)
@@ -58,7 +87,7 @@ If you forgot to add `--recursive`, you will have to also run `git submodule upd
 The simplest way to obtain all the required dependencies is through [vcpkg](https://github.com/Microsoft/vcpkg) which is included with a [manifest file](https://github.com/microsoft/vcpkg/blob/master/docs/users/manifests.md).
 
 The easiest way to get started on any platform is to allow CMake and vcpkg to handle all dependencies and configuration
-for you. To do so, you will be selecting the `"ninja-multi-vcpkg"   - Ninja Multi-Config (vcpkg)` preset. Other presets are available for more advanced users.
+for you. On the command line, use the `"ninja-multi-vcpkg" - Ninja Multi-Config (vcpkg)` preset. In Visual Studio 2022 on Windows 11, use `windows-11-vcpkg`. On Linux 64-bit desktops, use `linux-x64-vcpkg`. Other presets are available for more advanced users.
 
 ### Visual Studio Code
  * Install [Visual Studio Code](https://code.visualstudio.com/Download)
@@ -78,6 +107,7 @@ for you. To do so, you will be selecting the `"ninja-multi-vcpkg"   - Ninja Mult
     * Select an appropriate Windows SDK Component for your version
     * Select the C++ CMake tools for Windows Component
 * You can simply [open the `openblack` folder directly in Visual Studio and select a preset](https://devblogs.microsoft.com/cppblog/cmake-presets-integration-in-visual-studio-and-visual-studio-code/).
+* On Windows 11, the recommended preset is `windows-11-vcpkg`.
 
 ### Clion
 * Install [Clion](https://www.jetbrains.com/clion/download/)
@@ -110,7 +140,11 @@ for you. To do so, you will be selecting the `"ninja-multi-vcpkg"   - Ninja Mult
 * Your usual build tool-chain.
     * Ubuntu / Debian: `# apt install build-essential cmake ninja-build`
     * Arch Linux / Manjaro: `# pacman -S base-devel cmake ninja`
+    * Windows 11 (PowerShell): install Visual Studio 2022 with Desktop development for C++, then run from a Developer PowerShell with `cmake`, `ctest`, and `ninja` on `PATH`
 * You can generate the cmake build preset using `cmake --preset` and you can list the presets using `cmake --list-presets`
+* Recommended desktop presets:
+    * Windows 11: `windows-11-vcpkg` in Visual Studio 2022, or `ninja-multi-vcpkg` from the command line
+    * Linux 64-bit: `linux-x64-vcpkg`
 
 ## Configuration for using System Dependencies (Recommended for packagers)
 
