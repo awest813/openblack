@@ -60,7 +60,7 @@ If you just want to run or build openblack on a modern desktop, use the followin
 
 ## Experimental
 
-The following are qualified as exprimental. They have base minimum setup such as compilation and rendering system.
+The following are qualified as experimental. They have base minimum setup such as compilation and rendering system.
 Don't expect to be able to launch without some effort and your own patches.
 
 [![Windows (x86) Build](https://img.shields.io/badge/Build-Windows%20(x86)-0078d4)](https://nightly.link/openblack/openblack/workflows/ci-cross-compile/master/openblack-x86-windows-master.zip)
@@ -87,7 +87,7 @@ If you forgot to add `--recursive`, you will have to also run `git submodule upd
 The simplest way to obtain all the required dependencies is through [vcpkg](https://github.com/Microsoft/vcpkg) which is included with a [manifest file](https://github.com/microsoft/vcpkg/blob/master/docs/users/manifests.md).
 
 The easiest way to get started on any platform is to allow CMake and vcpkg to handle all dependencies and configuration
-for you. To do so, you will be selecting the `"ninja-multi-vcpkg" - Ninja Multi-Config (vcpkg)` preset on the command line, `windows-11-vcpkg` in Visual Studio 2022 on Windows 11, or `linux-x64-vcpkg` on Linux 64-bit desktops. Other presets are available for more advanced users.
+for you. On the command line, use the `"ninja-multi-vcpkg" - Ninja Multi-Config (vcpkg)` preset. In Visual Studio 2022 on Windows 11, use `windows-11-vcpkg`. On Linux 64-bit desktops, use `linux-x64-vcpkg`. Other presets are available for more advanced users.
 
 ### Visual Studio Code
  * Install [Visual Studio Code](https://code.visualstudio.com/Download)
